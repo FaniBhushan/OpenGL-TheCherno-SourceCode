@@ -5,30 +5,9 @@
 #include <sstream>
 #include <string>
 
-#define ASSERT(x) \
-    if (!x)       \
-    abort()
-#define GLCALL(x)   \
-    GLClearError(); \
-    x;              \
-    ASSERT(GLPrintError(#x, __FILE__, __LINE__))
-
-static void GLClearError()
-{
-    while (GL_NO_ERROR != glGetError())
-        ;
-}
-
-static bool GLPrintError(const char *function, const char *fileName, int line)
-{
-    auto errorCode = glGetError();
-    if (GL_NO_ERROR != errorCode)
-    {
-        std::cout << errorCode << " Error in function: " << function << " in file: " << fileName << "in line: " << line << std::endl;
-        return false;
-    }
-    return true;
-}
+#include "Renderer.h"
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
 
 struct ShaderSource
 {
@@ -183,109 +162,104 @@ int main(void)
 
     std::cout << glGetString(GL_VERSION) << std::endl;
 
-    // buffer data store
-    float positions[] = {
-        -0.5f, -0.5f, // 0
-        0.5f, -0.5f,  // 1
-        0.5f, 0.5f,   // 2
-        -0.5f, 0.5f}; // 3
-
-    unsigned int indices[] = {
-        0, 1, 2,
-        2, 3, 0};
-
-    // buffer
-    unsigned int buffer, VAO, ibo;
-
-    // creates/generate 1 buffer object name (since the first parameter is 1)
-    glGenBuffers(1, &buffer);
-
-    // creates/generate 1 Array object name (since the first parameter is 1)
-    glGenVertexArrays(1, &VAO);
-
-    // bind the vertex array object to the given name
-    glBindVertexArray(VAO);
-
-    // bind the buffer object name against the target "GL_ARRAY_BUFFER"
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-
-    // creates and initializes the buffer data store
-    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), positions, GL_STATIC_DRAW);
-
-    // create,bind assigne data to indices buffer:
-    glGenBuffers(1, &ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
-
-    // define the array of vertex attribute data for "position" attribute. Other attribute examples: position : 0 (index), texture coordinate: 1, normal : 2
-    // Also defines the layout. at index 0 vertex buffer "buffer" is bound
-    GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
-
-    ShaderSource shaderSource = ParseShader("./Res/basic.shader");
-
-    // create the shaders using the function defined above
-    unsigned int shader = CreateShader(shaderSource.vertexShader, shaderSource.fragmentShader);
-
-    // Bind the program returned, which shall be when this main is executed.
-    glUseProgram(shader);
-
-    GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
-    ASSERT(!(location == -1));
-    GLCALL(glUniform4f(location, 0.2f, 0.3f, 0.8f, 1.0f));
-
-    // enable the vertex attribute array at index 0:
-    glEnableVertexAttribArray(0);
-
-    // Unbind the vertex array, shader, buffer and index buffer
-    GLCALL(glBindVertexArray(0));
-    GLCALL(glUseProgram(0));
-    GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-    GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-
-    float r = 0.5f;
-    float increment = 0.05f;
-
-    /* Render Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window))
     {
-        /* Render here */
-        // clear the screen
-        glClear(GL_COLOR_BUFFER_BIT);
+        // buffer data store
+        float positions[] = {
+            -0.5f, -0.5f, // 0
+            0.5f, -0.5f,  // 1
+            0.5f, 0.5f,   // 2
+            -0.5f, 0.5f}; // 3
 
-        // Following will draw the triangle using the shaders defined above:
+        unsigned int indices[] = {
+            0, 1, 2,
+            2, 3, 0};
 
-        // binding the shader program
-        GLCALL(glUseProgram(shader));
-        GLCALL(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+        // vertex array object
+        unsigned int VAO;
 
-        // binding the vertex array object and index buffer since unbound above.
-        GLCALL(glBindVertexArray(VAO));
-        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
+        // creates/generate 1 Array object name (since the first parameter is 1)
+        glGenVertexArrays(1, &VAO);
 
-        // Draw the square by drawing two triangles using the indices buffer:
-        GLCALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+        // bind the vertex array object to the given name
+        glBindVertexArray(VAO);
 
-        if (r > 1.0f)
+        // create,bind assigne data to vertex buffer:
+        VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+
+        // create,bind assigne data to indices buffer:
+        IndexBuffer ib(indices, 6);
+
+        // define the array of vertex attribute data for "position" attribute. Other attribute examples: position : 0 (index), texture coordinate: 1, normal : 2
+        // Also defines the layout. at index 0 vertex buffer "buffer" is bound
+        GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
+
+        ShaderSource shaderSource = ParseShader("../res/shaders/Basic.shader");
+
+        // create the shaders using the function defined above
+        unsigned int shader = CreateShader(shaderSource.vertexShader, shaderSource.fragmentShader);
+
+        // Bind the program returned, which shall be when this main is executed.
+        glUseProgram(shader);
+
+        GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
+        ASSERT(!(location == -1));
+        GLCALL(glUniform4f(location, 0.2f, 0.3f, 0.8f, 1.0f));
+
+        // enable the vertex attribute array at index 0:
+        glEnableVertexAttribArray(0);
+
+        // Unbind the vertex array, shader, buffer and index buffer
+        GLCALL(glBindVertexArray(0));
+        GLCALL(glUseProgram(0));
+        GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+
+        float r = 0.5f;
+        float increment = 0.05f;
+
+        /* Render Loop until the user closes the window */
+        while (!glfwWindowShouldClose(window))
         {
-            increment = -0.05f;
+            /* Render here */
+            // clear the screen
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            // Following will draw the triangle using the shaders defined above:
+
+            // binding the shader program
+            GLCALL(glUseProgram(shader));
+            GLCALL(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+
+            // binding the vertex array object and index buffer since unbound above.
+            GLCALL(glBindVertexArray(VAO));
+
+            // bind the index vuffer since unbound above
+            ib.bind();
+
+            // Draw the square by drawing two triangles using the indices buffer:
+            GLCALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+
+            if (r > 1.0f)
+            {
+                increment = -0.05f;
+            }
+            else if (r < 0.0f)
+            {
+                increment = 0.05f;
+            }
+
+            r += increment;
+
+            /* Swap front and back buffers */
+            glfwSwapBuffers(window);
+
+            /* Poll for and process events */
+            glfwPollEvents();
         }
-        else if (r < 0.0f)
-        {
-            increment = 0.05f;
-        }
 
-        r += increment;
-
-        /* Swap front and back buffers */
-        glfwSwapBuffers(window);
-
-        /* Poll for and process events */
-        glfwPollEvents();
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteProgram(shader);
     }
-
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &buffer);
-    glDeleteProgram(shader);
     glfwTerminate();
     return 0;
 }
