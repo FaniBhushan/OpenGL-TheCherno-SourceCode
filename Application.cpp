@@ -148,8 +148,12 @@ int main(void)
     if (!glfwInit())
         return -1;
 
+    // use specific version of Opengl lib i.e. 3.3 here
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
+    // setting the core profile instead of compatibility profile. This will result in no default vertex array object creation as 0.
+    // Therefore a vertex array object needs to be defined i.e VAO below
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
     std::cout << "I'm apple machine" << std::endl;
@@ -170,6 +174,9 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+
+    // set the interval for delaying the swapping of the buffer when glfwSwapBmjuffer is called
+    glfwSwapInterval(1);
 
     if (GLEW_OK == glewInit())
         std::cout << "OK" << std::endl;
@@ -211,7 +218,8 @@ int main(void)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
 
     // define the array of vertex attribute data for "position" attribute. Other attribute examples: position : 0 (index), texture coordinate: 1, normal : 2
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    // Also defines the layout. at index 0 vertex buffer "buffer" is bound
+    GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
 
     ShaderSource shaderSource = ParseShader("./Res/basic.shader");
 
@@ -221,8 +229,21 @@ int main(void)
     // Bind the program returned, which shall be when this main is executed.
     glUseProgram(shader);
 
-    // enable the vertex attribute array:
+    GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
+    ASSERT(!(location == -1));
+    GLCALL(glUniform4f(location, 0.2f, 0.3f, 0.8f, 1.0f));
+
+    // enable the vertex attribute array at index 0:
     glEnableVertexAttribArray(0);
+
+    // Unbind the vertex array, shader, buffer and index buffer
+    GLCALL(glBindVertexArray(0));
+    GLCALL(glUseProgram(0));
+    GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+
+    float r = 0.5f;
+    float increment = 0.05f;
 
     /* Render Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -231,10 +252,29 @@ int main(void)
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Following will draw the triangle using the shaders defined above
+        // Following will draw the triangle using the shaders defined above:
+
+        // binding the shader program
+        GLCALL(glUseProgram(shader));
+        GLCALL(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+
+        // binding the vertex array object and index buffer since unbound above.
+        GLCALL(glBindVertexArray(VAO));
+        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
 
         // Draw the square by drawing two triangles using the indices buffer:
-        GLCALL(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
+        GLCALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+
+        if (r > 1.0f)
+        {
+            increment = -0.05f;
+        }
+        else if (r < 0.0f)
+        {
+            increment = 0.05f;
+        }
+
+        r += increment;
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
