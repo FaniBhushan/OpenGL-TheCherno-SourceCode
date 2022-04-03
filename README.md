@@ -12,5 +12,8 @@ I am using Macbook pro (Big Sur v11.6) to compile this.
 
 Details of installation is in the Youtube video.
 
-## command to compile Application.cpp with glfw and glew libraries:
- g++ $(pkg-config --cflags glfw3 glew) -o Application Application.cpp $(pkg-config --static --libs glfw3 glew) -framework OpenGL
+## command to compile Application.cpp with glfw and glew libraries (OSx):
+g++ -std=c++11 $(pkg-config --cflags glfw3 glew) -o Application Application.cpp VertexBuffer.cpp IndexBuffer.cpp Renderer.cpp $(pkg-config --static --libs glfw3 glew) -framework OpenGL
+
+## Note:
+Currently cmake compilation throws linking error. Will be fixed in future commits.
